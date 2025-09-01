@@ -1,0 +1,190 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  Linking,
+  Platform
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import { useNavigation } from '@react-navigation/native';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  updateDoc,
+  doc
+} from 'firebase/firestore';
+import { db } from './firebaseConfig';
+import * as Location from 'expo-location';
+
+const PickupScreen = () => {
+  const [orders, setOrders] = useState([]);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const fetchLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setDriverLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+        });
+      }
+    };
+
+    fetchLocation();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'orders'), where('status', '==', 'in_progress'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setOrders(data);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleCall = (phone) => {
+    const link = Platform.OS === 'ios' ? `telprompt:${phone}` : `tel:${phone}`;
+    Linking.openURL(link);
+  };
+
+  const handlePause = async () => {
+    const currentOrder = orders[currentIndex];
+    if (!currentOrder) return;
+
+    await updateDoc(doc(db, 'orders', currentOrder.id), {
+      status: 'paused'
+    });
+
+    setCurrentIndex((prev) => prev + 1);
+  };
+
+  const handlePickup = async () => {
+    const currentOrder = orders[currentIndex];
+    if (!currentOrder) return;
+
+    await updateDoc(doc(db, 'orders', currentOrder.id), {
+      status: 'picked_up'
+    });
+
+    setCurrentIndex((prev) => prev + 1);
+  };
+
+  if (!driverLocation) {
+    return (
+      <View style={styles.loading}>
+        <Text>Getting location...</Text>
+      </View>
+    );
+  }
+
+  const currentOrder = orders[currentIndex];
+
+  return (
+    <View style={styles.container}>
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          ...driverLocation,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05
+        }}
+        showsUserLocation
+      >
+        {currentOrder && (
+          <Marker
+            coordinate={currentOrder.pickupLocation}
+            title={currentOrder.storeName || 'Store'}
+            pinColor="green"
+          />
+        )}
+      </MapView>
+
+      {currentOrder ? (
+        <View style={styles.panel}>
+          <Text style={styles.price}>Pickup Order</Text>
+          <Text style={styles.storeName}>{currentOrder.storeName}</Text>
+          <TouchableOpacity onPress={() => handleCall(currentOrder.storePhone)}>
+            <Text style={styles.callLink}>📞 Call Store</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.itemsTitle}>Items:</Text>
+          {currentOrder.items?.map((item, idx) => (
+            <Text key={idx} style={styles.itemText}>
+              • {item.qty} x {item.name}
+            </Text>
+          ))}
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
+              <Text style={styles.pauseText}>Pause</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pickupButton} onPress={handlePickup}>
+              <Text style={styles.pickupText}>Slide to Pickup</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.waiting}>
+          <Text style={styles.waitingText}>All pickups completed</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  map: { flex: 1 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  waiting: {
+    position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center'
+  },
+  waitingText: { fontSize: 18, color: '#999' },
+
+  panel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 5
+  },
+  price: { fontSize: 24, fontWeight: 'bold', marginBottom: 5 },
+  storeName: { fontWeight: 'bold', fontSize: 18, marginVertical: 5 },
+  callLink: { color: '#1E90FF', marginTop: 2 },
+  itemsTitle: { marginTop: 10, fontWeight: 'bold' },
+  itemText: { marginLeft: 10 },
+  buttonRow: { flexDirection: 'row', marginTop: 15, justifyContent: 'space-between' },
+  pauseButton: {
+    backgroundColor: '#999',
+    padding: 12,
+    borderRadius: 10,
+    flex: 1,
+    marginRight: 10,
+    alignItems: 'center'
+  },
+  pickupButton: {
+    backgroundColor: 'green',
+    padding: 12,
+    borderRadius: 10,
+    flex: 1,
+    alignItems: 'center'
+  },
+  pauseText: { color: 'white', fontWeight: 'bold' },
+  pickupText: { color: 'white', fontWeight: 'bold' }
+});
+
+export default PickupScreen;
