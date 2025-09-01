@@ -12,7 +12,9 @@ const IncomingOrderScreen = () => {
   const [driverLocation, setDriverLocation] = useState(null);
   const navigation = useNavigation();
   const soundRef = useRef(null);
+  const isAcceptingRef = useRef(false);
 
+  // Get current location
   useEffect(() => {
     const fetchLocation = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -28,6 +30,7 @@ const IncomingOrderScreen = () => {
     fetchLocation();
   }, []);
 
+  // Listen for assigned orders
   useEffect(() => {
     const q = query(collection(db, 'orders'), where('status', '==', 'assigned'));
 
@@ -35,7 +38,7 @@ const IncomingOrderScreen = () => {
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setOrders(data);
 
-      if (data.length > 0 && !soundRef.current) {
+      if (data.length > 0 && !soundRef.current && !isAcceptingRef.current) {
         const { sound } = await Audio.Sound.createAsync(
           require('./assets/alert.mp3'),
           { shouldPlay: true, isLooping: true }
@@ -52,15 +55,16 @@ const IncomingOrderScreen = () => {
     return () => unsubscribe();
   }, []);
 
+  // Accept orders
   const handleAccept = async () => {
-    // Stop sound
+    isAcceptingRef.current = true;
+
     if (soundRef.current) {
       await soundRef.current.stopAsync();
       await soundRef.current.unloadAsync();
       soundRef.current = null;
     }
 
-    // Update all assigned orders to 'in_progress'
     const batchPromises = orders.map(order =>
       updateDoc(doc(db, 'orders', order.id), {
         status: 'in_progress',
@@ -68,8 +72,10 @@ const IncomingOrderScreen = () => {
     );
     await Promise.all(batchPromises);
 
-    // Navigate to pickup screen with all accepted orders
-    navigation.navigate('PickupScreen', { acceptedOrderIds: orders.map(o => o.id) });
+    // Small delay to allow Firestore to update before navigating
+    setTimeout(() => {
+      navigation.navigate('PickupScreen', { acceptedOrderIds: orders.map(o => o.id) });
+    }, 500);
   };
 
   const handleCall = (phone) => {

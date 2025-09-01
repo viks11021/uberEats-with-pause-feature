@@ -1,34 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  TouchableOpacity,
-  Linking,
-  Platform
+  View, Text, StyleSheet, TouchableOpacity, Linking, Platform
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  updateDoc,
-  doc
+  collection, query, where, onSnapshot, updateDoc, doc
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import * as Location from 'expo-location';
 
 const PickupScreen = () => {
-  const [orders, setOrders] = useState([]);
+  const [ordersMap, setOrdersMap] = useState({});
+  const [activeOrderIds, setActiveOrderIds] = useState([]);
+  const [currentOrderId, setCurrentOrderId] = useState(null);
+  const [pausedOrder, setPausedOrder] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const navigation = useNavigation();
 
+  // Fetch location once
   useEffect(() => {
-    const fetchLocation = async () => {
+    (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         const location = await Location.getCurrentPositionAsync({});
@@ -37,20 +29,37 @@ const PickupScreen = () => {
           longitude: location.coords.longitude
         });
       }
-    };
-
-    fetchLocation();
+    })();
   }, []);
 
+  // Listen to order updates from Firestore
   useEffect(() => {
-    const q = query(collection(db, 'orders'), where('status', '==', 'in_progress'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setOrders(data);
+    const q = query(collection(db, 'orders'), where('status', 'in', ['in_progress', 'paused']));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allOrders = {};
+      const activeIds = [];
+      let paused = null;
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        allOrders[docSnap.id] = { id: docSnap.id, ...data };
+
+        if (data.status === 'in_progress') activeIds.push(docSnap.id);
+        if (data.status === 'paused') paused = { id: docSnap.id, ...data };
+      });
+
+      setOrdersMap(allOrders);
+      setActiveOrderIds(activeIds);
+      setPausedOrder(paused);
+
+      // If we don’t have a currentOrderId, set to first available
+      if (!currentOrderId && activeIds.length > 0) {
+        setCurrentOrderId(activeIds[0]);
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentOrderId]);
 
   const handleCall = (phone) => {
     const link = Platform.OS === 'ios' ? `telprompt:${phone}` : `tel:${phone}`;
@@ -58,25 +67,39 @@ const PickupScreen = () => {
   };
 
   const handlePause = async () => {
-    const currentOrder = orders[currentIndex];
-    if (!currentOrder) return;
+    const current = ordersMap[currentOrderId];
+    if (!current) return;
 
-    await updateDoc(doc(db, 'orders', currentOrder.id), {
-      status: 'paused'
-    });
+    await updateDoc(doc(db, 'orders', current.id), { status: 'paused' });
 
-    setCurrentIndex((prev) => prev + 1);
+    // Move to next in-progress order
+    const idx = activeOrderIds.indexOf(current.id);
+    if (idx !== -1 && idx + 1 < activeOrderIds.length) {
+      setCurrentOrderId(activeOrderIds[idx + 1]);
+    } else if (pausedOrder) {
+      setCurrentOrderId(pausedOrder.id);
+    } else {
+      setCurrentOrderId(null);
+    }
   };
 
   const handlePickup = async () => {
-    const currentOrder = orders[currentIndex];
-    if (!currentOrder) return;
+    const current = ordersMap[currentOrderId];
+    if (!current) return;
 
-    await updateDoc(doc(db, 'orders', currentOrder.id), {
-      status: 'picked_up'
-    });
+    await updateDoc(doc(db, 'orders', current.id), { status: 'picked_up' });
 
-    setCurrentIndex((prev) => prev + 1);
+    // Move to next active order
+    const idx = activeOrderIds.indexOf(current.id);
+    if (idx !== -1 && idx + 1 < activeOrderIds.length) {
+      setCurrentOrderId(activeOrderIds[idx + 1]);
+    } else if (pausedOrder && pausedOrder.id !== current.id) {
+      // Resume paused
+      await updateDoc(doc(db, 'orders', pausedOrder.id), { status: 'in_progress' });
+      setCurrentOrderId(pausedOrder.id);
+    } else {
+      setCurrentOrderId(null); // All done
+    }
   };
 
   if (!driverLocation) {
@@ -87,7 +110,7 @@ const PickupScreen = () => {
     );
   }
 
-  const currentOrder = orders[currentIndex];
+  const currentOrder = currentOrderId ? ordersMap[currentOrderId] : null;
 
   return (
     <View style={styles.container}>
@@ -125,11 +148,13 @@ const PickupScreen = () => {
           ))}
 
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
-              <Text style={styles.pauseText}>Pause</Text>
-            </TouchableOpacity>
+            {pausedOrder?.id !== currentOrder.id && (
+              <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
+                <Text style={styles.pauseText}>Pause</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.pickupButton} onPress={handlePickup}>
-              <Text style={styles.pickupText}>Slide to Pickup</Text>
+              <Text style={styles.pickupText}>Pickup</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -147,10 +172,13 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   waiting: {
-    position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center'
+    position: 'absolute',
+    bottom: 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center'
   },
   waitingText: { fontSize: 18, color: '#999' },
-
   panel: {
     position: 'absolute',
     bottom: 0,
