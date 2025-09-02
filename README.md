@@ -19,7 +19,7 @@ I built this as a hands-on demo to explore real-world delivery edge cases like o
 
 ---
 
-## 🔧 Tech Stack
+## Tech Stack
 
 - **React Native (with Expo SDK)**
 - **Firebase Firestore** – real-time backend for orders
@@ -29,7 +29,7 @@ I built this as a hands-on demo to explore real-world delivery edge cases like o
 
 ---
 
-## 📱 Demo Flow
+## Demo Flow
 
 1. New orders are stored in Firestore
 2. Driver accepts → status becomes `in_progress`
@@ -61,11 +61,13 @@ I built this as a hands-on demo to explore real-world delivery edge cases like o
 git clone https://github.com/viks11021/driver-demo-app.git
 cd driver-demo-app
 
-2. Add a .env file:
+
+### 2. Add a .env file
+```bash
 
 GOOGLE_MAPS_API_KEY=your_real_maps_api_key_here
 
-3. Confirm app.config.js reads your API key:
+### 3. Confirm app.config.js reads your API key:
 
 import 'dotenv/config';
 
@@ -79,17 +81,17 @@ export default {
   },
 };
 
-4. Install dependencies
+### 4. Install dependencies
 
 npm install
 
-5. Run the app
+### 5. Run the app
 
 npx expo start
 
-Note: Ensure your Google Maps API key has Directions API & Maps SDK for Android/iOS enabled in GCP Console.
+# Note: Ensure your Google Maps API key has Directions API & Maps SDK for Android/iOS enabled in GCP Console.
 
 
-Inspired By:
+### Inspired By:
 
 Apps like Uber Eats, Deliveroo, and Zomato that handle multi-order logic smartly. This clone explores just one piece — the pause and reroute — but it’s a reminder that real-world features are more nuanced than they seem.
