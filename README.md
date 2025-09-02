@@ -60,7 +60,10 @@ I built this as a hands-on demo to explore real-world delivery edge cases like o
 ```bash
 git clone https://github.com/viks11021/driver-demo-app.git
 cd driver-demo-app
+```
 
 2. Add a .env file
 
+```
 GOOGLE_MAPS_API_KEY=your_real_maps_api_key_here
+```
