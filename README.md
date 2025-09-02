@@ -101,4 +101,4 @@ npx expo start
 
 ### Inspired By:
 
-Apps like Uber Eats, Deliveroo, and Zomato that handle multi-order logic smartly. This clone explores just one piece — the pause and reroute — but it’s a reminder that real-world features are more nuanced than they seem.
+Apps like Uber Eats, Deliveroo, and Zomato that handle multi-order logic smartly. This clone explores just one piece the pause and reroute but it’s a reminder that real-world features are more nuanced than they seem.
