@@ -14,7 +14,6 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 
 const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY;
-console.log('GOOGLE_MAPS_API_KEY', GOOGLE_MAPS_API_KEY)
 
 const PickupScreen = () => {
   const [ordersMap, setOrdersMap] = useState({});
