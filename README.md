@@ -1,6 +1,6 @@
 # UberEats-Style Driver App Clone (with Pause & Reroute Feature)
 
-A React Native (Expo) demo driver app that replicates real-world delivery scenarios inspired by UberEats and Deliveroo — but with a twist: a fully working “Pause Order” and auto-reroute feature for multi-pickup workflows.
+A React Native (Expo) demo driver app that replicates real-world delivery scenarios inspired by UberEats and Deliveroo but with a twist: a fully working “Pause Order” and auto-reroute feature for multi-pickup workflows.
 
 This project demonstrates thoughtful product design, clean architecture, and real-time features using Firebase, Firestore, and Google Maps Directions API.
 
@@ -32,11 +32,11 @@ I built this as a hands-on demo to explore real-world delivery edge cases like o
 ## Demo Flow
 
 1. New orders are stored in Firestore
-2. Driver accepts → status becomes `in_progress`
+2. Driver accepts -> status becomes `in_progress`
 3. Live map renders pickup route
-4. If delayed, driver taps **Pause** → order is set to `paused`
+4. If delayed, driver taps **Pause** -> order is set to `paused`
 5. App auto-routes to the next available order
-6. When all pickups are done → message shows: **All pickups completed**
+6. When all pickups are done -> message shows: **All pickups completed**
 
 ---
 
