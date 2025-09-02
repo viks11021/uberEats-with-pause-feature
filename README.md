@@ -62,8 +62,43 @@ git clone https://github.com/viks11021/driver-demo-app.git
 cd driver-demo-app
 ```
 
-2. Add a .env file
+### 2. Add a .env file
 
 ```
 GOOGLE_MAPS_API_KEY=your_real_maps_api_key_here
 ```
+
+### 3. Confirm app.config.js reads your API key:
+
+```
+import 'dotenv/config';
+
+export default {
+  expo: {
+    name: 'driver-demo-app',
+    version: '1.0.0',
+    extra: {
+      GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
+    },
+  },
+};
+```
+
+### 4. Install dependencies
+
+```
+npm install
+```
+
+### 5. Run the app
+
+```
+npx expo start
+```
+---
+# Note: Ensure your Google Maps API key has Directions API & Maps SDK for Android/iOS enabled in GCP Console.
+
+
+### Inspired By:
+
+Apps like Uber Eats, Deliveroo, and Zomato that handle multi-order logic smartly. This clone explores just one piece — the pause and reroute — but it’s a reminder that real-world features are more nuanced than they seem.
