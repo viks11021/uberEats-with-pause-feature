@@ -1,4 +1,4 @@
-# UberEats-Style Driver App Clone (with Pause & Reroute Feature)
+# UberEats-clone Driver App (with Pause & Reroute Feature)
 
 A React Native (Expo) demo driver app that replicates real-world delivery scenarios inspired by UberEats and Deliveroo but with a twist: a fully working “Pause Order” and auto-reroute feature for multi-pickup workflows.
 
